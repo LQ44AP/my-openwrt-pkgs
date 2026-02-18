@@ -10,7 +10,7 @@ jobs:
       matrix:
         # 在这里定义你的架构，例如 x86_64, aarch64_generic, mipsel_24kc
         # 你可以添加多个，用逗号分隔
-        target: [x86_64, aarch64_generic, mipsel_24kc]
+        target: [x86_64, aarch64_generic]
         # 定义 OpenWrt 版本，例如 23.05.0, 22.03.5
         version: [23.05.5]
 
