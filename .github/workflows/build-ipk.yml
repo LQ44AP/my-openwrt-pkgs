@@ -1,0 +1,60 @@
+name: Build libldac IPK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        # 在这里定义你的架构，例如 x86_64, aarch64_generic, mipsel_24kc
+        # 你可以添加多个，用逗号分隔
+        target: [x86_64]
+        # 定义 OpenWrt 版本，例如 23.05.0, 22.03.5
+        version: [23.05.5]
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential clang flex bison g++ gawk gcc-multilib g++-multilib \
+          gettext git libncurses5-dev libssl-dev python3-distutils rsync unzip zlib1g-dev swig libpython3-dev cmake
+
+      - name: Download and Setup SDK
+        run: |
+          # 自动匹配 SDK 路径（以 x86_64 为例，如果是其他架构，路径规则略有不同）
+          # 建议直接在官方下载页复制对应架构的 SDK 链接替换下面的 URL
+          if [ "${{ matrix.target }}" == "x86_64" ]; then
+            SDK_URL="https://downloads.openwrt.org/releases/${{ matrix.version }}/targets/x86/64/openwrt-sdk-${{ matrix.version }}-x86-64_gcc-12.3.0_musl.Linux-x86_64.tar.xz"
+          else
+            # 这是一个通用的 arm64 例子
+            SDK_URL="https://downloads.openwrt.org/releases/${{ matrix.version }}/targets/armsr/armv8/openwrt-sdk-${{ matrix.version }}-armsr-armv8_gcc-12.3.0_musl.Linux-x86_64.tar.xz"
+          fi
+          
+          wget -q $SDK_URL -O sdk.tar.xz
+          mkdir sdk && tar -xJf sdk.tar.xz -C sdk --strip-components=1
+
+      - name: Add libldac to SDK
+        run: |
+          mkdir -p sdk/package/libs/libldac
+          # 确保你的仓库里有这个 Makefile
+          cp package/libs/libldac/Makefile sdk/package/libs/libldac/
+
+      - name: Build libldac
+        run: |
+          cd sdk
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+          make defconfig
+          # 仅编译 libldac 及其依赖
+          make package/libs/libldac/compile V=s
+
+      - name: Upload Artifact (v4)
+        uses: actions/upload-artifact@v4
+        with:
+          name: libldac-ipk-${{ matrix.target }}-${{ matrix.version }}
+          path: sdk/bin/packages/*/base/libldac*.ipk
