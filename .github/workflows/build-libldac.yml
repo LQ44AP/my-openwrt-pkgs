@@ -10,7 +10,7 @@ jobs:
       matrix:
         # 在这里定义你的架构，例如 x86_64, aarch64_generic, mipsel_24kc
         # 你可以添加多个，用逗号分隔
-        target: [x86_64]
+        target: [x86_64, aarch64_generic, mipsel_24kc]
         # 定义 OpenWrt 版本，例如 23.05.0, 22.03.5
         version: [23.05.5]
 
@@ -47,8 +47,19 @@ jobs:
       - name: Build libldac
         run: |
           cd sdk
+          
+          # 1. 替换默认源为 GitHub 镜像 (提高拉取成功率)
+          cat > feeds.conf.default <<EOF
+          src-git base https://github.com/openwrt/openwrt.git;v23.05.5
+          src-git packages https://github.com/openwrt/packages.git;openwrt-23.05
+          src-git routing https://github.com/openwrt/routing.git;openwrt-23.05
+          src-git telephony https://github.com/openwrt/telephony.git;openwrt-23.05
+          EOF
+
+          # 2. 更新源
           ./scripts/feeds update -a
           ./scripts/feeds install -a
+          
           make defconfig
           # 仅编译 libldac 及其依赖
           make package/libs/libldac/compile V=s
