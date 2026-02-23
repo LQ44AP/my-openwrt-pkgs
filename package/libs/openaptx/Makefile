@@ -18,8 +18,12 @@ define Package/openaptx
   DEPENDS:=+libsndfile
 endef
 
-define Build/Configure
-	# openaptx 使用简单 Makefile，通常不需要 ./configure
+# 这一段非常重要：安装开发文件，供其他包（如 ffmpeg）编译时链接
+define Build/InstallDev
+	$(INSTALL_DIR) $(1)/usr/include
+	$(CP) $(PKG_BUILD_DIR)/include/openaptx.h $(1)/usr/include/
+	$(INSTALL_DIR) $(1)/usr/lib
+	$(CP) $(PKG_BUILD_DIR)/libopenaptx.so* $(1)/usr/lib/
 endef
 
 define Package/openaptx/install
