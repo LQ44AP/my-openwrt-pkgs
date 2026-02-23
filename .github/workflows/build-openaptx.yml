@@ -42,7 +42,7 @@ jobs:
         run: |
           mkdir -p sdk/package/libs/openaptx
           # 确保你的仓库里有这个 Makefile
-          cp my-openwrt-pkgs/package/libs/openaptx/Makefile sdk/package/libs/openaptx/
+          cp package/libs/openaptx/Makefile sdk/package/libs/openaptx/
 
       - name: Build openaptx
         run: |
