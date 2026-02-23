@@ -1,0 +1,74 @@
+name: Build openaptx IPK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        include:
+          - target: x86_64
+            sdk_url_path: x86/64
+            sdk_name_pattern: x86-64
+          - target: aarch64_generic
+            sdk_url_path: armsr/armv8
+            sdk_name_pattern: armsr-armv8
+        version: [23.05.6]
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential flex bison g++ gawk gcc-multilib g++-multilib \
+          gettext git libncurses5-dev libssl-dev python3-distutils rsync unzip zlib1g-dev cmake
+
+      - name: Download and Setup SDK
+        run: |
+          # 动态拼接获取完整的 SDK 下载页面链接并提取下载地址
+          BASE_URL="https://downloads.openwrt.org/releases/${{ matrix.version }}/targets/${{ matrix.sdk_url_path }}/"
+          SDK_NAME=$(curl -s $BASE_URL | grep -o "openwrt-sdk-${{ matrix.version }}-${{ matrix.sdk_name_pattern }}_gcc-[^?]*_musl.Linux-x86_64.tar.xz" | head -n 1)
+          
+          if [ -z "$SDK_NAME" ]; then
+            echo "Error: Could not find SDK filename for ${{ matrix.target }}"
+            exit 1
+          fi
+          
+          wget -q "${BASE_URL}${SDK_NAME}" -O sdk.tar.xz
+          mkdir sdk && tar -xJf sdk.tar.xz -C sdk --strip-components=1
+
+      - name: Add openaptx to SDK
+        run: |
+          mkdir -p sdk/package/libs/openaptx
+          # 确保你的仓库里有这个 Makefile
+          cp package/libs/openaptx/Makefile sdk/package/libs/openaptx/
+
+      - name: Build openaptx
+        run: |
+          cd sdk
+          
+          # 1. 替换默认源为 GitHub 镜像 (提高拉取成功率)
+          cat > feeds.conf.default <<EOF
+          src-git base https://github.com/openwrt/openwrt.git;v23.05.6
+          src-git packages https://github.com/openwrt/packages.git;openwrt-23.05
+          src-git routing https://github.com/openwrt/routing.git;openwrt-23.05
+          # src-git telephony https://github.com/openwrt/telephony.git;openwrt-23.05
+          EOF
+
+          # 2. 更新源
+          ./scripts/feeds update -a
+          ./scripts/feeds install libsndfile
+          
+          make defconfig
+          # 仅编译 openaptx 及其依赖
+          make package/libs/openaptx/compile V=s
+
+      - name: Upload Artifact (v4)
+        uses: actions/upload-artifact@v4
+        with:
+          name: openaptx-ipk-${{ matrix.target }}-${{ matrix.version }}
+          path: sdk/bin/packages/*/base/openaptx*.ipk
