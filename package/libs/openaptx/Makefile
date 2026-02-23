@@ -9,7 +9,6 @@ PKG_SOURCE_URL:=https://github.com/arkq/openaptx.git
 PKG_SOURCE_VERSION:=v$(PKG_VERSION)
 PKG_MIRROR_HASH:=skip
 
-# 告诉系统在临时目录进行安装，以便后续拷贝
 PKG_INSTALL:=1
 
 include $(INCLUDE_DIR)/package.mk
@@ -22,8 +21,19 @@ define Package/openaptx
   DEPENDS:=+libsndfile
 endef
 
-# 关键修正：通过 CMake 参数关闭示例程序的编译，避免交叉编译冲突
-CMAKE_OPTIONS += -DWITH_SAMPLES=OFF
+# 核心补丁：通过配置选项禁用 SAMPLES 和 UTILS
+# 这通常是防止交叉编译时运行目标二进制文件的标准做法
+CMAKE_OPTIONS += \
+	-DWITH_SAMPLES=OFF \
+	-DWITH_UTILS=OFF
+
+# 如果上面的选项不起作用，强制在准备阶段删除导致问题的代码行
+define Build/Prepare
+	$(call Build/Prepare/Default)
+	$(SED) '/add_subdirectory(src)/d' $(PKG_BUILD_DIR)/CMakeLists.txt
+	# 确保 lib 目录被正常处理，我们可以手动添加
+	echo "add_subdirectory(lib)" >> $(PKG_BUILD_DIR)/CMakeLists.txt
+endef
 
 define Build/InstallDev
 	$(INSTALL_DIR) $(1)/usr/include
