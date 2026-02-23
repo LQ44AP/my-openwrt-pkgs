@@ -8,13 +8,10 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        include:
-          - target: x86_64
-            sdk_url_path: x86/64
-            sdk_name_pattern: x86-64
-          - target: aarch64_generic
-            sdk_url_path: armsr/armv8
-            sdk_name_pattern: armsr-armv8
+        # 在这里定义你的架构，例如 x86_64, aarch64_generic, mipsel_24kc
+        # 你可以添加多个，用逗号分隔
+        target: [x86_64, aarch64_generic]
+        # 定义 OpenWrt 版本，例如 23.05.0, 22.03.5
         version: [23.05.6]
 
     steps:
@@ -24,21 +21,21 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential flex bison g++ gawk gcc-multilib g++-multilib \
-          gettext git libncurses5-dev libssl-dev python3-distutils rsync unzip zlib1g-dev cmake
+          sudo apt-get install -y build-essential clang flex bison g++ gawk gcc-multilib g++-multilib \
+          gettext git libncurses5-dev libssl-dev python3-distutils rsync unzip zlib1g-dev swig libpython3-dev cmake
 
       - name: Download and Setup SDK
         run: |
-          # 动态拼接获取完整的 SDK 下载页面链接并提取下载地址
-          BASE_URL="https://downloads.openwrt.org/releases/${{ matrix.version }}/targets/${{ matrix.sdk_url_path }}/"
-          SDK_NAME=$(curl -s $BASE_URL | grep -o "openwrt-sdk-${{ matrix.version }}-${{ matrix.sdk_name_pattern }}_gcc-[^?]*_musl.Linux-x86_64.tar.xz" | head -n 1)
-          
-          if [ -z "$SDK_NAME" ]; then
-            echo "Error: Could not find SDK filename for ${{ matrix.target }}"
-            exit 1
+          # 自动匹配 SDK 路径（以 x86_64 为例，如果是其他架构，路径规则略有不同）
+          # 建议直接在官方下载页复制对应架构的 SDK 链接替换下面的 URL
+          if [ "${{ matrix.target }}" == "x86_64" ]; then
+            SDK_URL="https://downloads.openwrt.org/releases/${{ matrix.version }}/targets/x86/64/openwrt-sdk-${{ matrix.version }}-x86-64_gcc-12.3.0_musl.Linux-x86_64.tar.xz"
+          else
+            # 这是一个通用的 arm64 例子
+            SDK_URL="https://downloads.openwrt.org/releases/${{ matrix.version }}/targets/armsr/armv8/openwrt-sdk-${{ matrix.version }}-armsr-armv8_gcc-12.3.0_musl.Linux-x86_64.tar.xz"
           fi
           
-          wget -q "${BASE_URL}${SDK_NAME}" -O sdk.tar.xz
+          wget -q $SDK_URL -O sdk.tar.xz
           mkdir sdk && tar -xJf sdk.tar.xz -C sdk --strip-components=1
 
       - name: Add openaptx to SDK
