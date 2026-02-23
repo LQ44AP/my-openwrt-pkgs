@@ -21,18 +21,22 @@ define Package/openaptx
   DEPENDS:=+libsndfile
 endef
 
-# 核心补丁：通过配置选项禁用 SAMPLES 和 UTILS
-# 这通常是防止交叉编译时运行目标二进制文件的标准做法
+# 1. 禁用不需要的选项
 CMAKE_OPTIONS += \
 	-DWITH_SAMPLES=OFF \
 	-DWITH_UTILS=OFF
 
-# 如果上面的选项不起作用，强制在准备阶段删除导致问题的代码行
+# 2. 核心补丁：精准移除 src/CMakeLists.txt 中关于 sample 和 bin2array 的定义
+# 这样 CMake 就只会编译 libopenaptx.so，而不会去跑那个报错的 bin2array
 define Build/Prepare
 	$(call Build/Prepare/Default)
-	$(SED) '/add_subdirectory(src)/d' $(PKG_BUILD_DIR)/CMakeLists.txt
-	# 确保 lib 目录被正常处理，我们可以手动添加
-	echo "add_subdirectory(lib)" >> $(PKG_BUILD_DIR)/CMakeLists.txt
+	# 进入源码目录
+	(cd $(PKG_BUILD_DIR)/src; \
+	 $(SED) '/add_executable(bin2array/d' CMakeLists.txt; \
+	 $(SED) '/target_link_libraries(bin2array/d' CMakeLists.txt; \
+	 $(SED) '/add_custom_command/,/DEPENDS bin2array/d' CMakeLists.txt; \
+	 $(SED) '/set(SAMPLES_SRC/,/)/d' CMakeLists.txt; \
+	)
 endef
 
 define Build/InstallDev
