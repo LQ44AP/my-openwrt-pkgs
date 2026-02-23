@@ -40,8 +40,11 @@ jobs:
 
       - name: Add openaptx to SDK
         run: |
+          # 1. 创建 SDK 内部的目标目录
           mkdir -p sdk/package/libs/openaptx
-          # 确保你的仓库里有这个 Makefile
+          
+          # 2. 从你的仓库路径复制 Makefile
+          # 假设 actions/checkout 检出到了根目录，路径就是你说的这个
           cp package/libs/openaptx/Makefile sdk/package/libs/openaptx/
 
       - name: Build openaptx
